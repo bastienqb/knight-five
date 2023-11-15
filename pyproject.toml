@@ -1,0 +1,58 @@
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling"]
+
+[project]
+authors = [
+  {name = "BL"}
+]
+classifiers = [
+  "Programming Language :: Python :: 3.10",
+]
+dependencies = [
+  "numpy>=1.25",
+]
+description = "Vizro is a package to facilitate visual analytics."
+version = "0.1.0"
+name = "game"
+readme = "README.md"
+requires-python = ">=3.10"
+
+[tool.black]
+line-length = 120
+target-version = ['py310']
+
+[tool.ruff]
+# see: https://beta.ruff.rs/docs/rules/
+ignore = [
+  "D104"  # undocumented-public-package
+]
+ignore-init-module-imports = true
+line-length = 120
+select = [
+  "E",  # pycodestyle errors
+  "W",  # pycodestyle warnings
+  "F",  # pyflakes
+  "I",  # isort
+  "D",  # pydocstyle
+  "T201",  # print
+  "C4",  # flake8-comprehensions
+  "RUF",  # Ruff-specific rules
+  "PL"  # pylint
+]
+target-version = "py310"
+
+[tool.ruff.isort]
+known-first-party = ["vizro"]
+
+[tool.ruff.per-file-ignores]
+# Tests can use magic values, assertions, and relative imports, ignore missing docstrings
+"**/tests/**/*" = ["PLR2004", "S101", "TID252", "D100", "D101", "D102", "D103"]
+# Ignore import violations in all __init__.py files
+"__init__.py" = ["E402", "F401"]
+
+[tool.ruff.pydocstyle]
+convention = "google"
+
+[tool.ruff.pylint]
+max-args = 6
