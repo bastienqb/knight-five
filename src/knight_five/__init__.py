@@ -1,0 +1,1 @@
+"""Knight five game."""

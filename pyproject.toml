@@ -14,7 +14,7 @@ dependencies = [
 ]
 description = "Vizro is a package to facilitate visual analytics."
 version = "0.1.0"
-name = "game"
+name = "knight_five"
 readme = "README.md"
 requires-python = ">=3.10"
 
