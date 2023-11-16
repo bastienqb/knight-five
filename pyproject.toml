@@ -11,6 +11,11 @@ classifiers = [
 ]
 dependencies = [
   "numpy>=1.25",
+  "tensorboard>=2.10.0",
+  "torch>=1.12.1",
+  "wandb",
+  "gymnasium>=0.28.1",
+  "pygame>=2.5.0"
 ]
 description = "Vizro is a package to facilitate visual analytics."
 version = "0.1.0"
