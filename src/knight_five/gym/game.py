@@ -91,7 +91,7 @@ class KnightGame(gym.Env):
                 "time_passed": spaces.Box(low=0, high=1.0, shape=(1,), dtype=float),
             }
         )
-        self._success = False
+        self._success = None
 
     def reset(self, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[ObsType, Info]:
         """Reset the environment."""
@@ -104,6 +104,7 @@ class KnightGame(gym.Env):
         self.minutes = 0
 
         self._has_jump = True  # convention to trigger the computation if decides to stay
+        self._success = False
 
         obs = self._get_obs()
         info = self._get_info()
