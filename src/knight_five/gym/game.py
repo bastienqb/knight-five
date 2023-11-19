@@ -91,6 +91,7 @@ class KnightGame(gym.Env):
                 "time_passed": spaces.Box(low=0, high=1.0, shape=(1,), dtype=float),
             }
         )
+        self._success = False
 
     def reset(self, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[ObsType, Info]:
         """Reset the environment."""
@@ -127,6 +128,7 @@ class KnightGame(gym.Env):
             # if king reaches the goal, stop the game
             if self._knight_pos == self._goal:
                 terminated = True
+                self._success = True
                 reward = REWARD_REACH  # reaching the goal is rewarded
         else:
             # stay for 1 minute
@@ -165,7 +167,11 @@ class KnightGame(gym.Env):
 
     def _get_info(self) -> Info:
         """Return the information for the RL agent."""
-        return {"minutes": self.minutes}
+        return {
+            "minutes": self.minutes,
+            "knight": self.excel_pos(self._knight_pos),
+            "success": self._success,
+        }
 
     def excel_pos(self, pos: Position) -> str:
         """Return position with the game convention."""
