@@ -3,19 +3,20 @@
 import logging
 import math
 from itertools import chain
-from typing import Dict, List, Tuple
+from typing import Any, List, SupportsFloat, Tuple
 
 import gymnasium as gym
 import numpy as np
 import pygame
-from gymnasium import spaces
+import torch
+from gymnasium import ObservationWrapper, spaces
+from gymnasium.core import Env, ObsType
 from numpy.typing import NDArray
 
 Jump = Tuple[int, int, int]
 Position = Tuple[int, int]
 
-Observation = Dict
-Info = Dict
+Info = dict[str, Any]
 
 EPS = 1e-12
 
@@ -23,13 +24,13 @@ SHAPE = 2
 ALLOWED_FREQ = 3
 BIG_FLOAT = 1e6
 COLS = "abcdefghijklmopqrstu"
-MAX_MINUTES = 300
+MAX_MINUTES = 50
 
-REWARD_JUMP = 0
+REWARD_JUMP = 0.2
 REWARD_STAY = 1
 REWARD_REACH = 10
-REWARD_BLOCKED = -10
-REWARD_OVERTIME = -10
+REWARD_BLOCKED = -80
+REWARD_OVERTIME = -80
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +82,9 @@ class KnightGame(gym.Env):
                 "board": spaces.Box(
                     low=-BIG_FLOAT, high=BIG_FLOAT, shape=(self._dim_board, self._dim_board), dtype=float
                 ),
-                "frequency": spaces.Box(low=0, high=ALLOWED_FREQ, shape=(self._dim_board, self._dim_board), dtype=int),
+                "frequency": spaces.Box(
+                    low=0, high=ALLOWED_FREQ, shape=(self._dim_board, self._dim_board), dtype=float
+                ),
                 "knight": spaces.Box(low=0, high=self._dim_board - 1, shape=(2,), dtype=int),
                 "goal": spaces.Box(low=0, high=self._dim_board - 1, shape=(2,), dtype=int),
                 "action_mask": spaces.MultiBinary(n=len(self._actions)),
@@ -89,7 +92,7 @@ class KnightGame(gym.Env):
             }
         )
 
-    def reset(self, seed: int | None = None) -> Tuple[Observation, Info]:
+    def reset(self, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[ObsType, Info]:
         """Reset the environment."""
         super().reset(seed=seed)
 
@@ -109,7 +112,7 @@ class KnightGame(gym.Env):
 
         return obs, info
 
-    def step(self, action: int | None = None) -> Tuple[Observation, float, bool, bool, Info]:
+    def step(self, action: int | None = None) -> tuple[ObsType, SupportsFloat, bool, bool, Info]:
         """Step the game and returns the information needed for the RL algorithm."""
         terminated = False
         truncated = False
@@ -119,6 +122,7 @@ class KnightGame(gym.Env):
         if jump is not None:
             assert self._is_valid_jump(jump=jump, pos=self._knight_pos)
             self._knight_pos = self._jump(pos=self._knight_pos, jump=jump)
+            self._freq[self._knight_pos] += 1
             self._has_jump = True
             # if king reaches the goal, stop the game
             if self._knight_pos == self._goal:
@@ -146,7 +150,7 @@ class KnightGame(gym.Env):
 
         return obs, reward, terminated, truncated, self._get_info()
 
-    def _get_obs(self) -> Observation:
+    def _get_obs(self) -> ObsType:
         """Return the observation for the RL agent."""
         action_mask = self._get_action_mask(self._knight_pos)
 
@@ -156,12 +160,12 @@ class KnightGame(gym.Env):
             "knight": self._knight_pos,
             "goal": self._goal,
             "action_mask": action_mask,
-            "time_passed": self.minutes / MAX_MINUTES,
+            "time_passed": np.array([self.minutes / MAX_MINUTES]),
         }
 
     def _get_info(self) -> Info:
         """Return the information for the RL agent."""
-        return {}
+        return {"minutes": self.minutes}
 
     def excel_pos(self, pos: Position) -> str:
         """Return position with the game convention."""
@@ -284,8 +288,6 @@ class KnightGame(gym.Env):
         return self._freq[new_pos] < ALLOWED_FREQ
 
     def _step_board(self) -> None:
-        if self._has_jump:
-            self._freq[self._knight_pos] += 1
         self._board[self._sink] -= self._rate
         if self._rise is not None:
             self._board[self._rise] += self._rate
@@ -364,3 +366,44 @@ class KnightGame(gym.Env):
         if self.window is not None:
             pygame.display.quit()
             pygame.quit()
+
+
+class KnightObsWrapper(ObservationWrapper):
+    """Observation wrapper to give proper observation to the NN."""
+
+    def __init__(self, env: Env):
+        """Return a new environment suited for nn."""
+        super().__init__(env)
+        self.observation_space = spaces.Dict(
+            {
+                "conv": spaces.Box(
+                    low=-BIG_FLOAT,
+                    high=BIG_FLOAT,
+                    shape=(2, *self.unwrapped.observation_space["board"].shape),
+                    dtype=float,
+                ),
+                "fc": spaces.Box(low=0, high=self.unwrapped._dim_board - 1, shape=(5,), dtype=float),
+                "action_mask": self.unwrapped.observation_space["action_mask"],
+            }
+        )
+
+    def observation(self, observation: Any) -> Any:
+        """Return a transformed observation."""
+        return {
+            "conv": np.stack(
+                [torch.tensor(observation["board"]), torch.tensor(observation["frequency"])], axis=0
+            ),  # conv obs
+            "fc": np.concatenate(
+                [
+                    torch.tensor(observation["knight"]),
+                    torch.tensor(observation["goal"]),
+                    torch.tensor(observation["time_passed"]),
+                ],
+                axis=0,
+            ),  # fc obs
+            "action_mask": observation["action_mask"],
+        }
+
+    def get_obs_shape(self) -> dict[str, Any]:
+        """Return the shape of the observation."""
+        return {obs_name: obs_space.shape for obs_name, obs_space in self.observation_space.items()}
