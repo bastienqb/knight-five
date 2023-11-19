@@ -1,10 +1,20 @@
-from knight_five.gym.game import KnightGame
-from knight_five.gym.game_example import EXAMPLE_BOARD
+"""Readme example."""
 
-if __name__ == "__main__":
+import rich_click as click
+from rich.console import Console
+
+from ..gym.game import KnightGame
+from ..gym.game_example import EXAMPLE_BOARD
+
+console = Console()
+
+
+@click.command()
+def readme():
+    """Run the Readme example."""
     env = KnightGame(board=EXAMPLE_BOARD.board, goal=EXAMPLE_BOARD.goal, start=EXAMPLE_BOARD.start, render_mode="human")
 
-    obs, info = env.reset()
+    _, _ = env.reset()
 
     all_actions = env.get_all_actions()
 
@@ -58,10 +68,11 @@ if __name__ == "__main__":
         (0, 2, 1),  # d4
     ]
 
-    for s in steps:
-        action = all_actions.index(s)
-        obs, reward, terminated, truncated, info = env.step(action)
+    with console.status("Game is running..."):
+        for s in steps:
+            action = all_actions.index(s)
+            _ = env.step(action)
 
-    print(env.minutes)
+    console.print(f"✨ Game ended! Knight tour took {env.minutes} min.", style="purple")
 
     env.close()

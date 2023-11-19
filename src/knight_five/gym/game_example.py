@@ -48,3 +48,13 @@ COMPETITIVE_BOARD = BoardGame(
     goal=(0, 7),
     start=(7, 0),
 )
+
+
+def get_env(env_name: str) -> BoardGame:
+    """Return the desired board game."""
+    if env_name == "simple":
+        return EXAMPLE_BOARD
+    elif env_name == "competitive":
+        return COMPETITIVE_BOARD
+    else:
+        raise ValueError(f"the name {env_name} is not a valid environment.")
